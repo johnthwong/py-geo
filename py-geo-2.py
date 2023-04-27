@@ -20,11 +20,15 @@ import os
 # conda install -c conda-forge folium matplotlib mapclassify
 from dash import Dash, dcc, html
 import dash_leaflet
+import plotly.graph_objects as go
+import plotly.express as px
 import json
+import nbformat
+import pandas
 
 
 os.getcwd()
-# os.chdir("C:/Users/John TH Wong/Documents")
+# os.chdir("C:/Users/John TH Wong/Documents/py-geo")
 # os.chdir("/Users/john/Library/Mobile Documents/com~Apple~CloudDocs/research/coding/py-geo")
 def wd(): 
     return os.getcwd()
@@ -33,18 +37,18 @@ wd = wd()
 # %% 
 # CSDI PORTAL DATA ----
 
-df_openspace = geopandas.read_file("data/POS.json") # Public Open Space
-df_dist_boundaries = geopandas.read_file("data/DCD.json") # District Council Boundaries
+df_hk_openspace = geopandas.read_file("data/POS.json") # Public Open Space
+df_hk_dist_boundaries = geopandas.read_file("data/DCD.json") # District Council Boundaries
 
 # %%
-df_openspace.head()
-df_dist_boundaries.head()
+df_hk_openspace.head()
+df_hk_dist_boundaries.head()
 #%%
 df_openspace = df_a.drop(columns = 'LASTUPDATE')
 df_openspace.explore()
-df_dist_boundaries.explore()
+df_hk_dist_boundaries.explore()
 
-# %%
+""" # %%
 # OPENSTREETMAP DATA ----
 
 fp = pyrosm.get_data("test_pbf")
@@ -127,26 +131,31 @@ plot = roads.plot(edgecolor = 'gray', linewidth = 0.75,
                 ax = plot 
                 )
 plot.set_ylim([52.36, 52.38])
-plot.set_xlim([4.88, 4.91])
+plot.set_xlim([4.88, 4.91]) 
+"""
 
 
 # %%
 # CSDI PORTAL DATA 2 ----
 
 df_hk_buildings = geopandas.read_file('data/building_FSDT/BUILDING_STRUCTURE.json')
+df_hk_roads = geopandas.read_file('data/roads_FSDT/CENTERLINE.json')
+df_hk_slopes = geopandas.read_file('data/SMR_FSDT/SMR_BDY_POLY.json')
+df_hk_map = geopandas.read_file('data/map_topographic_50000/ELEVPOLY.json')
+# df_hk_govland = geopandas.read_file('data/govland_FSDT/GovernmentLandAllocation.json')
 # %%
 df_hk_buildings.plot()
 # %%
 # df_hk_buildings.describe()
 df_hk_buildings.columns
 # df_hk_buildings['geometry']
-# %%
-df_hk_roads = geopandas.read_file('data/roads_FSDT/CENTERLINE.json')
-# %%
-df_hk_slopes = geopandas.read_file('data/SMR_FSDT/SMR_BDY_POLY.json')
-# df_hk_govland = geopandas.read_file('data/govland_FSDT/GovernmentLandAllocation.json')
-# %%
-df_bldg_pos = geopandas.sjoin(df_hk_buildings, df_openspace, how = 'inner')
+#%%
+plot_map = df_hk_map.plot()
+plot_map.set_xlim([830000,845000])
+plot_map.set_ylim([810000,825000])
+
+""" # %%
+df_bldg_pos = geopandas.sjoin(df_hk_buildings, df_hk_openspace, how = 'inner')
 # %%
 df_hk_buildings['CATEGORY']
 plot_bldg_pos = df_bldg_pos.plot(figsize = (12,12),
@@ -155,6 +164,7 @@ plot_bldg_pos = df_bldg_pos.plot(figsize = (12,12),
                                    legend = True)
 plot_bldg_pos = df_hk_roads.plot(edgecolor = 'gray', linewidth = 0.75, 
                                  ax = plot_bldg_pos)
+# plot_bldg_pos = df_hk_map.plot(color = 'gray', ax = plot_bldg_pos)
 plot_bldg_pos.set_ylim([815000, 822500])
 plot_bldg_pos.set_xlim([832500, 837500])
 
@@ -162,39 +172,100 @@ plot_bldg_pos.set_xlim([832500, 837500])
 # %%
 df_bldg_pos = df_bldg_pos.drop(columns = ['STATUSDATE', 'LASTUPDATE'])
 # join_bldg_pos.explore().save('map.html')
-
+ """
 #%%
 df_bldg_slopes = geopandas.sjoin(df_hk_buildings, df_hk_slopes, how = 'inner')
+
+#%%
+plot_bldg_slopes = df_hk_map.plot(color = 'whitesmoke',
+                                  figsize = (12, 12))
 plot_bldg_slopes = df_bldg_slopes.plot(figsize = (12,12),
                                    cmap = 'RdYlBu',
                                    column = 'CATEGORY',
-                                   legend = True)
-plot_bldg_slopes = df_hk_roads.plot(edgecolor = 'gray', linewidth = 0.75,
+                                   legend = True,
+                                   ax = plot_bldg_slopes)
+plot_bldg_slopes = df_hk_roads.plot(edgecolor = 'grey', linewidth = 0.75,
                                     ax = plot_bldg_slopes)
 plot_bldg_slopes.set_xlim([830000,845000])
 plot_bldg_slopes.set_ylim([810000,825000])
 
-#%%
-df_map = geopandas.read_file('data/map_topographic_50000/ELEVLINE.json')
-plot_map = df_map.plot()
-plot_map.set_xlim([830000,845000])
-plot_map.set_ylim([810000,825000])
+
 
 
 
 #%%
-df_bldg_slopes_json = df_bldg_slopes.to_json()
+# df_bldg_slopes_json = df_bldg_slopes.to_json()
 
-app = Dash()
+# app = Dash()
 
-app.layout = dash_leaflet.Map(
-    [dash_leaflet.TileLayer(),
-     dash_leaflet.GeoJSON(data=df_bldg_slopes_json,
-                          zoomToBounds=True, zoomToBoundsOnClick=True)    
-     ],
-    style = {'width': '10-0px', 'height': '500px'}
+# app.layout = html.Div([
+#     dash_leaflet.Map(children = [dash_leaflet.TileLayer(),
+#                                  dash_leaflet.GeoJSON(id = 'districts',
+#                                                       url='data/map_topographic_50000/BDRYLINE.json',
+#                                                       zoomToBounds=True, zoomToBoundsOnClick=True
+#                                                       )                         
+#                                 ],
+#     style={'width': '100%', 'height': '50vh', 'margin': "auto", "display": "block"}
+#     ),
+#     html.Div(id = 'districts')
+# ])
+
+#%%
+""" fig = go.Figure(go.Scattergeo())
+fig.update_layout(height=300, margin={"r":0,"t":0,"l":0,"b":0})
+fig.show()
+ """
+
+""" #%%
+url = 'https://raw.githubusercontent.com/kefeimo/DataScienceBlog/master/2.geo_plot/df_mapbox_demo.csv'
+df_plot_tmp = pandas.read_csv(url)
+df_plot_tmp.head()
+# two-line code
+fig = px.scatter_mapbox(df_plot_tmp, lat="latitude", lon="longitude", color="gender", zoom=3, mapbox_style='open-street-map')
+fig.show()
+#%%
+lat = pandas.to_numeric(df_hk_openspace["LATITUDE"])
+lon = pandas.to_numeric(df_hk_openspace["LONGITUDE"])
+name = df_hk_openspace["NAME_EN"]
+color = df_hk_openspace["NSEARCH01_EN"]
+
+fig = px.scatter_mapbox(lat=lat, lon=lon, zoom=10, mapbox_style='open-street-map',
+                        width = 1000, height = 1000, hover_name = name,
+                        color = color, size_max = 20)
+
+fig.show()
+ """
+#%%
+fig = go.Figure(
+    go.Choroplethmapbox(
+        geojson=eval(df_bldg_slopes['geometry'].to_json()),
+        locations = df_bldg_slopes.index,
+        z = df_bldg_slopes['CATEGORY']
     )
+)
+fig.update_layout(mapbox_style='open-street-map')
+fig.show()
 
+#%%
+df_geo = geopandas.read_file('https://raw.githubusercontent.com/kevalshah90/StroomWeb/23ef45e3d4da98ec0d6cae91842174411a403692/uscensusgeo.geojson')
+fig = go.Figure(
+    go.Choroplethmapbox(
+        geojson=eval(df_geo['geometry'].to_json()),  # note the 'eval' here
+        locations=df_geo.index,  # point to dataframe's index
+        z=df_geo['ALAND'],
+        colorscale="Viridis", 
+        zmin=df_geo['ALAND'].min(), 
+        zmax=df_geo['ALAND'].max(), 
+        marker_line_width=0
+    )
+)
+fig.update_layout(mapbox_style='open-street-map')
+fig.show()
+#%%
+app = Dash()
+app.layout = html.Div([
+    dcc.Graph(figure=fig)
+])
 
 
 #%%
@@ -220,3 +291,5 @@ if __name__ == '__main__':
 
 
 
+
+# %%
