@@ -1,0 +1,47 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2708
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # Questions about plotly\
+\
+- px.choropleth_mapbox vs go.Choroplethmatpbox vs px.choropleth vs go.Chropleth\
+\
+	\
+\
+- mapbox maps vs geo maps?\
+\
+Plotly has two main types of maps, Geo maps and Mapbox maps. Geo maps are outline based and Mapbox maps are tile based. The main difference between the two is that an outline based map draws everything at once, while a tile based map has a hierarchy of information that is rendered at different levels of zoom.\
+\
+If I have a map that starts at a global scale and I want users to be able to zoom into see fine levels of granularity, then a tile based map may suit my needs better than an outline map. Since tile based maps don\'92t have to load in all of the information right away they can be less memory intensive, but having to process the granularity changes when zooming increases a tile maps processing power overhead. This means that tile based maps are fantastic for making a lot of information available without cluttering the map, but they require more data and processing power.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+{\field{\*\fldinst{HYPERLINK "https://towardsdatascience.com/make-beautiful-spatial-visualizations-with-plotly-and-mapbox-fd5a638d6b3c"}}{\fldrslt \cf0 https://towardsdatascience.com/make-beautiful-spatial-visualizations-with-plotly-and-mapbox-fd5a638d6b3c}}\
+\
+- go vs px\
+\pard\pardeftab720\partightenfactor0
+\cf0 The recommended way to create figures is using the functions in the plotly.express module, collectively known as Plotly Express, which all return instances of plotly.graph_objects.Figure, so every figure produced with the plotly library actually uses graph objects under the hood, unless manually constructed out of dictionaries.\
+\
+That said, certain kinds of figures are not yet possible to create with Plotly Express, such as figures that use certain 3D trace-types like mesh or isosurface. In addition, certain figures are cumbersome to create by starting from a figure created with Plotly Express, for example figures with subplots of different types, dual-axis plots, or faceted plots with multiple different types of traces. To construct such figures, it can be easier to start from an empty plotly.graph_objects.Figure object (or one configured with subplots via the make_subplots() function) and progressively add traces and update attributes as above. Every plotly documentation page lists the Plotly Express option at the top if a Plotly Express function exists to make the kind of chart in question, and then the graph objects version below.\
+\
+Note that the figures produced by Plotly Express in a single function-call are easy to customize at creation-time, and to manipulate after creation using the update_* and add_* methods.\
+\
+{\field{\*\fldinst{HYPERLINK "https://plotly.com/python/graph-objects/"}}{\fldrslt https://plotly.com/python/graph-objects/}}\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+\
+- can i use my own map rather than open-street-map?\
+\
+\pard\pardeftab720\partightenfactor0
+\cf0 If you have access to your own private tile servers, or wish to use a tile server not included in the list above, the recommended approach is to set layout.mapbox.style to "white-bg" and to use layout.mapbox.layers with below to specify a custom base map.\
+\
+If you omit the below attribute when using this approach, your data will likely be hidden by fully-opaque raster tiles!\
+\
+{\field{\*\fldinst{HYPERLINK "https://plotly.com/python/mapbox-layers/"}}{\fldrslt https://plotly.com/python/mapbox-layers/}}\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+- can i omit the z or color argument? is it commonplace to plot polygons with the chloropleth module?\
+\
+- wtf is eval doing? how does the geojson argument work?\
+}
