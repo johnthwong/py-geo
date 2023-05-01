@@ -19,6 +19,7 @@ import pyrosm
 import os
 # conda install -c conda-forge folium matplotlib mapclassify
 from dash import Dash, dcc, html
+import dash
 import dash_leaflet
 import plotly.graph_objects as go
 import plotly.express as px
@@ -36,16 +37,15 @@ wd = wd()
 # %% 
 # CSDI PORTAL DATA ----
 
-df_hk_openspace = geopandas.read_file("data/POS.json") # Public Open Space
-df_hk_dist_boundaries = geopandas.read_file("data/DCD.json") # District Council Boundaries
-
-# %%
-df_hk_openspace.head()
-df_hk_dist_boundaries.head()
-#%%
-df_openspace = df_a.drop(columns = 'LASTUPDATE')
-df_openspace.explore()
-df_hk_dist_boundaries.explore()
+# =============================================================================
+# df_hk_openspace = geopandas.read_file("data/POS.json") # Public Open Space
+# 
+# # %%
+# df_hk_openspace.head()
+# #%%
+# df_hk_openspace = df_hk_openspace.drop(columns = 'LASTUPDATE')
+# df_hk_openspace.explore()
+# =============================================================================
 
 # %%
 # =============================================================================
@@ -140,13 +140,44 @@ df_hk_dist_boundaries.explore()
 # CSDI PORTAL DATA 2 ----
 
 df_hk_buildings = geopandas.read_file('data/building_FSDT/BUILDING_STRUCTURE.json')
+df_hk_bldg_cat = geopandas.read_file('data/building_FSDT/CT_BUILDING_CATEGORY.json')
 df_hk_roads = geopandas.read_file('data/roads_FSDT/CENTERLINE.json')
 df_hk_slopes = geopandas.read_file('data/SMR_FSDT/SMR_BDY_POLY.json')
 df_hk_map = geopandas.read_file('data/map_topographic_50000/ELEVPOLY.json')
+df_hk_dist_boundaries = (geopandas.read_file("data/DCD.json") # District Council Boundaries
+                         .to_crs(epsg = 4326)
+                         .assign(center = lambda df_hk_dist_boundaries: df_hk_dist_boundaries.centroid)
+                         )
 # df_hk_govland = geopandas.read_file('data/govland_FSDT/GovernmentLandAllocation.json')
 
 # df_bldg_pos = geopandas.sjoin(df_hk_buildings, df_hk_openspace, how = 'inner')
-df_bldg_slopes = geopandas.sjoin(df_hk_buildings, df_hk_slopes, how = 'inner')
+df_bldg_slopes = (geopandas.sjoin(df_hk_buildings, df_hk_slopes, how = 'inner')
+                  .rename(columns = {
+                      'OBJECTID_left' : 'id_bldg',
+                      'SHAPE_Length_left' : 'shape_length_bldg',
+                      'SHAPE_Area_left' : 'shape_area_bldg',
+                      'index_right': 'index_slope',
+                      'OBJECTID_right': 'id_slope',
+                      'SHAPE_Length_right': 'shape_length_slope',
+                      'SHAPE_Area_right': 'shape_area_slope'
+                      })
+                  .to_crs(epsg = 4326)
+                  )
+
+df_hk_bldg_cat = df_hk_bldg_cat.rename(columns = {'CODE': 'CATEGORY',
+                                                  'DESCRIPTION': 'CATEGORY_DESC'})
+df_bldg_slopes['CATEGORY'] = df_bldg_slopes['CATEGORY'].astype(int)
+
+df_bldg_slopes_0 = pandas.merge(df_bldg_slopes, df_hk_bldg_cat[['CATEGORY', 'CATEGORY_DESC']], 
+                                on = 'CATEGORY', how = 'left')
+
+df_bldg_slopes_1 = (geopandas.sjoin(df_bldg_slopes_0, 
+                                   df_hk_dist_boundaries[['NAME_EN', 'geometry', 'center']], 
+                                   how = 'left', predicate = 'within')
+                    .rename(columns={'NAME_EN': 'district'})
+                    )
+
+
 # %%
 df_hk_buildings.plot()
 # %%
@@ -175,11 +206,11 @@ plot_map.set_ylim([810000,825000])
 # =============================================================================
 
 # %%
-df_bldg_pos = df_bldg_pos.drop(columns = ['STATUSDATE', 'LASTUPDATE'])
-# join_bldg_pos.explore().save('map.html')
+# =============================================================================
+# df_bldg_pos = df_bldg_pos.drop(columns = ['STATUSDATE', 'LASTUPDATE'])
+# # join_bldg_pos.explore().save('map.html')
+# =============================================================================
 
-#%%
-df_bldg_slopes = geopandas.sjoin(df_hk_buildings, df_hk_slopes, how = 'inner')
 
 #%%
 plot_bldg_slopes = df_hk_map.plot(color = 'whitesmoke',
@@ -245,9 +276,7 @@ plot_bldg_slopes.set_ylim([810000,825000])
 # 
 # =============================================================================
 #%%
-json_1 = eval(df_bldg_slopes['geometry'].to_json())
-
-df_bldg_slopes_1 = df_bldg_slopes.to_crs(epsg = 4326)
+# json_1 = eval(df_bldg_slopes['geometry'].to_json())
 
 # This one uses graph_objects mapbox
 # =============================================================================
@@ -319,11 +348,123 @@ fig = px.choropleth_mapbox(
 # fig.show()
 # =============================================================================
 #%%
-app = Dash()
+external_stylesheets = [
+    {
+        "href": (
+            "https://fonts.googleapis.com/css2?"
+            "family=Lato:wght@400;700&display=swap"
+        ),
+        "rel": "stylesheet",
+    },
+]
+app = Dash(__name__, external_stylesheets = external_stylesheets)
+# =============================================================================
+# app.layout = html.Div([
+#     dcc.Graph(figure=fig)
+# ])
+# =============================================================================
+
+districts = df_bldg_slopes_1['district'].sort_values().unique()
+def blank_figure():
+    fig = go.Figure(go.Scatter(x=[], y = []))
+    fig.update_xaxes(showgrid = False, showticklabels = False, zeroline=False)
+    fig.update_yaxes(showgrid = False, showticklabels = False, zeroline=False)
+    
+    return fig
+
 app.layout = html.Div([
-    dcc.Graph(figure=fig)
+    html.Div(className = 'header',
+             children = [
+                 html.H1(['Buildings Which Are in Close Proximity of Man-made Slopes'],
+                     className = 'header-title'),
+                html.P(
+                    children = [
+                        'Find out if a building is at risk during extreme weather'
+                    ],
+                    className = 'header-description')
+                 ]),
+    html.Div(
+        className = 'menu',
+        children = [
+            html.Div(
+                className = 'menu-wrapper',
+                children = [
+                    html.Div(className = 'menu-title'),
+                    html.P('Select a district:'),
+                    dcc.Dropdown(
+                        className = 'dropdown',
+                        id = 'district',
+                        options = [{'label': district, 'value': district}
+                                   for district in districts] #+ [{'label': 'Select all', 'value': 'all_districts'}]
+                        ,
+                        # value = 'all_districts',
+                        value = 'Central and Western District',
+                        clearable = False
+                        ),
+                ]
+            )
+        ]
+    ),
+    html.Div(
+        className = 'wrapper',
+        children=[
+            html.Div(
+                className = 'card',
+                children = [dcc.Graph(id = 'fig_1',
+                                      config = {'displayModeBar': False},
+                                      figure = blank_figure()
+                                      )]
+            )
+        ]
+    )
+    
 ])
 
+
+
+
+@app.callback(
+    dash.Output('fig_1', 'figure'),
+    dash.Input('district', 'value')
+    )
+def display_map(district):
+    if district == 'all_districts':
+        _df = df_bldg_slopes_1
+        # _lat = 22.3193
+        # _lon = 114.1694
+    else:
+        _df = df_bldg_slopes_1.query(
+            'district == @district')
+        
+        # _lat = (df_hk_dist_boundaries.query(
+        #     'NAME_EN == @district')
+        #     .center
+        #     .x
+        #     )
+        # _lon = (df_hk_dist_boundaries.query(
+        #     'NAME_EN == @district')
+        #     .center
+        #     .y
+        #     )
+    
+    
+    fig = px.choropleth_mapbox(
+        geojson=eval(_df['geometry'].to_json()),
+        locations = _df.index,
+        color = _df['CATEGORY_DESC'],
+        mapbox_style='open-street-map',
+        # center = {"lat": _lat, "lon": _lon},
+        center = {"lat": 22.3193, "lon": 114.1694},
+        zoom = 12, height = 800
+        )
+    
+    fig.update_layout( 
+        legend=dict(
+            title=None, orientation = 'h', y=1, yanchor="bottom", x=0.5, xanchor="center"
+        )
+    )
+   
+    return fig
 
 #%%
 if __name__ == '__main__':
