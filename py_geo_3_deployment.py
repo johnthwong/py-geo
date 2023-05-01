@@ -7,7 +7,6 @@ import dash
 import plotly.graph_objects as go
 import plotly.express as px
 
-import os
 # os.chdir("C:/Users/John TH Wong/Documents/py-geo")
 # os.chdir("/Users/john/Library/Mobile Documents/com~Apple~CloudDocs/research/coding/py-geo")
 
